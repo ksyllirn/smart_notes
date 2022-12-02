@@ -5,30 +5,64 @@ import sys
 import json
 
 def show_note():
-    text = notes_list.selectedItems()[0].text()
-    note = notes[text]['текст']
-    note_field.setText(note)
-#    tags_list.clear()
+    key = notes_list.selectedItems()[0].text()
+    note_field.setText(notes[key]['text'])
+    tags_list.clear()
+    tags_list.addItems(notes[key]['tags'])
 
 def load_notes():
-    global notes
-    with open('notes_data.json', 'r', encoding='utf-8') as file:
-        notes = json.load(file)
-    notes_list.addItems(notes)
+    try:
+        with open('notes.json', 'r') as file:
+            notes = json.load(file)
+        notes_list.addItems(notes)
+        return notes
+    except:
+        notes = {
+            'Приветственная заметка':{
+                'text': 'Это первая заметка',
+                'tags': ['начало', 'крут'] 
+            }
+        }
+        with open('notes.json', 'w') as file:
+            json.dump(notes, file)
+        notes_list.addItems(notes)
+        return notes
 
-#def del_note():
+def del_note():
+    if notes_list.selectedItems():
+        key = notes_list.selectedItems()[0].text()
+        del notes[key]
+        notes_list.clear()
+        tags_list.clear()
+        note_field.clear()
+        notes_list.addItems(notes)
+        with open('notes.json','w', encoding='utf-8') as file:
+            json.dump(notes, file, sort_keys= True)
+
+def add_tag():
+    if notes_list.selectedItems():
+        key = notes_list.selectedItems()[0].text()
+        tag = tag_field.text()
+        if not tag in notes[key]['tags']:
+            notes[key]['tags'].append(tag)
+            tags_list.addItem(tag)
+            tag_field.clear()
+            with open('notes.json','w', encoding='utf-8') as file:
+                json.dump(notes, file, sort_keys= True)
 
 def save_note():
-    global notes
-    text = notes_list.selectedItems()[0].text()
-    note = note_field.toPlainText()
-    notes[text]['текст'] = note
-    with open('notes_data.json','w', encoding='utf-8') as file:
-        json.dump(notes, file)
+    if notes_list.selectedItems():
+        key = notes_list.selectedItems()[0].text()
+        notes[key]['text'] = note_field.toPlainText()
+        with open('notes.json','w', encoding='utf-8') as file:
+            json.dump(notes, file, sort_keys= True)
 
 def add_note():
-    note_name, result = QInputDialog.getText(window,'Добавить заметку', 'Название заметки:')
-    print(note_name, result)
+    note_name, ok = QInputDialog.getText(window,'Добавить заметку', 'Название заметки:')
+    if ok and len(note_name) > 0:
+        notes[note_name] = {'text': '', 'tags': []}
+        notes_list.addItem(note_name)
+        tags_list.addItems(notes[note_name]['tags'])
 
 notes = {"Приветствие": {
     'текст': 'Что хотите то и делайте',
@@ -40,7 +74,8 @@ notes = {"Приветствие": {
 
 app = QApplication(sys.argv)
 window = QWidget()
-
+window.setWindowTitle('Smart-notes')
+window.resize(900,600)
 
 note_field = QTextEdit()
 notes_list = QListWidget()
@@ -52,11 +87,11 @@ btn_save_note = QPushButton('Сохранить заметку')
 
 btn_add_tag = QPushButton('Добавить к заметке')
 btn_remove_tag = QPushButton('Открепить от заметки')
-btn_search_by_tag = QPushButton('Искать по тегу')
+btn_search_tag = QPushButton('Искать по тегу')
 
 lbl_for_notes = QLabel('Список заметок')
 lbl_for_tags = QLabel('Список тегов')
-search_tag_field = QLineEdit()
+tag_field = QLineEdit()
 
 main_line = QHBoxLayout()
 left_side = QVBoxLayout()
@@ -79,10 +114,10 @@ h_3_line.addWidget(btn_delete_note)
 h_4_line.addWidget(btn_save_note)
 h_5_line.addWidget(lbl_for_tags)
 h_6_line.addWidget(tags_list)
-h_7_line.addWidget(search_tag_field)
+h_7_line.addWidget(tag_field)
 h_8_line.addWidget(btn_add_tag)
 h_8_line.addWidget(btn_remove_tag)
-h_9_line.addWidget(btn_search_by_tag)
+h_9_line.addWidget(btn_search_tag)
 
 right_side.addLayout(h_1_line)
 right_side.addLayout(h_2_line)
@@ -100,14 +135,15 @@ main_line.addLayout(left_side)
 main_line.addLayout(right_side)
 
 window.setLayout(main_line)
-search_tag_field.setPlaceholderText('Введите тег')
+tag_field.setPlaceholderText('Введите тег')
 
-window.setWindowTitle('Smart-notes')
-window.resize(900,600)
+
 notes_list.itemClicked.connect(show_note)
 btn_save_note.clicked.connect(save_note)
 btn_create_note.clicked.connect(add_note)
+btn_delete_note.clicked.connect(del_note)
+btn_add_tag.clicked.connect(add_tag)
 
-load_notes()
+notes = load_notes()
 window.show()
 app.exec()
